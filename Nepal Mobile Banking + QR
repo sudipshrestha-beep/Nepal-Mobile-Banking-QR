@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nepal Mobile Banking + QR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- QR Library -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+*{font-family:Arial;box-sizing:border-box}
+body{
+  margin:0;
+  background:linear-gradient(135deg,#e63946,#1d3557);
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.app{
+  width:360px;
+  background:white;
+  border-radius:20px;
+  padding:20px;
+  text-align:center;
+}
+h2{color:#1d3557}
+input{
+  width:90%;
+  padding:10px;
+  margin:8px 0;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+button{
+  width:90%;
+  padding:12px;
+  margin:6px 0;
+  border:none;
+  border-radius:8px;
+  background:#1d3557;
+  color:white;
+}
+.hidden{display:none}
+.balance-card{
+  background:#f1faee;
+  padding:20px;
+  margin:15px;
+  border-radius:12px;
+  font-size:22px;
+}
+.menu button{background:#e63946}
+.back{background:gray}
+#reader{width:100%}
+ul{list-style:none;padding:0}
+li{background:#f1f1f1;margin:5px;padding:8px;border-radius:6px}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <h2>🇳🇵 Nepal Mobile Banking</h2>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p style="font-size:12px;color:gray">Demo: admin / 1234</p>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+  <h2>Welcome, <span id="userName"></span></h2>
+  <div class="balance-card">
+    Balance <br>
+    <b id="balance"></b>
+  </div>
+  <div class="menu">
+    <button onclick="showSend()">Send Money</button>
+    <button onclick="showHistory()">History</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- SEND MONEY -->
+<div id="sendPage" class="hidden">
+  <h2>Send Money</h2>
+  <input id="receiver" placeholder="Receiver Name">
+  <input id="amount" type="number" placeholder="Amount (Rs.)">
+  <button onclick="openQR()">📷 Scan QR</button>
+  <button onclick="sendMoney()">Send</button>
+  <button class="back" onclick="back()">⬅ Back</button>
+</div>
+
+<!-- QR SCANNER -->
+<div id="qrPage" class="hidden">
+  <h2>Scan QR</h2>
+  <div id="reader"></div>
+  <button class="back" onclick="closeQR()">⬅ Back</button>
+</div>
+
+<!-- HISTORY -->
+<div id="historyPage" class="hidden">
+  <h2>Transaction History</h2>
+  <ul id="historyList"></ul>
+  <button class="back" onclick="back()">⬅ Back</button>
+</div>
+
+</div>
+
+<script>
+let currentBalance = localStorage.getItem("balance")
+? parseInt(localStorage.getItem("balance")) : 50000;
+
+let history = localStorage.getItem("history")
+? JSON.parse(localStorage.getItem("history")) : [];
+
+let qrScanner;
+
+function login(){
+  if(username.value==="admin" && password.value==="1234"){
+    loginPage.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+    userName.innerText=username.value;
+    updateBalance();
+  }else alert("Invalid Login!");
+}
+
+function logout(){location.reload();}
+
+function hideAll(){
+  document.querySelectorAll(".app > div")
+  .forEach(d=>d.classList.add("hidden"));
+}
+
+function showSend(){
+  hideAll();
+  sendPage.classList.remove("hidden");
+}
+
+function showHistory(){
+  hideAll();
+  historyPage.classList.remove("hidden");
+  renderHistory();
+}
+
+function back(){
+  hideAll();
+  dashboard.classList.remove("hidden");
+}
+
+function updateBalance(){
+  balance.innerText="Rs. "+currentBalance;
+  localStorage.setItem("balance",currentBalance);
+}
+
+function sendMoney(){
+  let r=receiver.value;
+  let a=parseInt(amount.value);
+  if(!r||!a||a<=0) return alert("Invalid details");
+  if(a>currentBalance) return alert("Insufficient balance");
+
+  currentBalance-=a;
+  updateBalance();
+
+  let record=`Sent Rs. ${a} to ${r}`;
+  history.push(record);
+  localStorage.setItem("history",JSON.stringify(history));
+
+  alert("Transaction Successful!");
+  receiver.value="";
+  amount.value="";
+  back();
+}
+
+/* ---------- QR PART ---------- */
+function openQR(){
+  hideAll();
+  qrPage.classList.remove("hidden");
+
+  qrScanner = new Html5Qrcode("reader");
+  qrScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 200 },
+    qrSuccess
+  );
+}
+
+function qrSuccess(decodedText){
+  receiver.value = decodedText; // QR text = receiver name
+  closeQR();
+}
+
+function closeQR(){
+  if(qrScanner){
+    qrScanner.stop();
+  }
+  hideAll();
+  sendPage.classList.remove("hidden");
+}
+/* -------------------------------- */
+
+function renderHistory(){
+  historyList.innerHTML="";
+  if(history.length===0){
+    historyList.innerHTML="<li>No transactions</li>";
+  }else{
+    history.slice().reverse().forEach(h=>{
+      let li=document.createElement("li");
+      li.innerText=h;
+      historyList.appendChild(li);
+    });
+  }
+}
+</script>
+</body>
+</html>
